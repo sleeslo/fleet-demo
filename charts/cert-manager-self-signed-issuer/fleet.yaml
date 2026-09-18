@@ -5,7 +5,7 @@ defaultNamespace: cert-manager
 # substituted into.
 helm:
   chart: ./
-  releaseName: cert-manager-issuer
+  releaseName: cert-manager-self-signed-issuer
 
 dependsOn:
   - selector:
