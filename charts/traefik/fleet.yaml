@@ -1,0 +1,20 @@
+defaultNamespace: traefik
+
+helm:
+  releaseName: traefik
+  repo: https://traefik.github.io/charts
+  chart: traefik
+  version: 41.6.0
+  valuesFiles:
+    - values.yaml
+
+# values.yaml sets providers.kubernetesGateway.enabled, so the Gateway API CRDs
+# must be Ready first. Selector form, because bundle names are derived from the
+# GitRepo name plus path and get truncated.
+dependsOn:
+  - selector:
+      matchLabels:
+        provides: gateway-api-crds
+
+labels:
+  provides: traefik

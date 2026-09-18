@@ -1,0 +1,18 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: landing-zone
+  namespace: fleet-local
+spec:
+  repo: https://github.com/sleeslo/fleet-demo.git
+  branch: main
+
+  # Order here is irrelevant, deployment order comes from dependsOn and
+  #  provides.
+  paths:
+    - charts/gateway-api-crds
+    - charts/traefik
+
+  targets:
+    - name: local
+      clusterGroup: default

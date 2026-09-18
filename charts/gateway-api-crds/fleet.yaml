@@ -1,0 +1,14 @@
+# Gateway API v1.6.1, Standard channel. Raw manifest bundle: no helm.chart and no
+# kustomization.yaml, so every .yaml in this directory is deployed as is.
+
+defaultNamespace: gateway-system
+
+helm:
+  releaseName: gateway-api-crds
+
+# Removing this bundle would otherwise cascade delete every Gateway and HTTPRoute
+# on the cluster. Teardown stays an explicit kubectl delete of the vendored file.
+keepResources: true
+
+labels:
+  provides: gateway-api-crds
