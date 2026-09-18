@@ -1,5 +1,5 @@
 apiVersion: v2
-name: cert-manager-issuer
+name: cert-manager-self-signed-issuer
 description: Cluster wide cert-manager issuers for this landing zone
 type: application
 # This chart is defined in this repository rather than pulled from an upstream

@@ -12,7 +12,7 @@ spec:
   paths:
     - charts/gateway-api-crds
     - charts/cert-manager
-    - charts/cert-manager-issuer
+    - charts/cert-manager-self-signed-issuer
     - charts/traefik-tls
     - charts/traefik
     - charts/external-dns

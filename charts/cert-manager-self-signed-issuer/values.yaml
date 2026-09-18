@@ -2,4 +2,4 @@ ca:
   # Fallback for a cluster that matches no targetCustomization in fleet.yaml.
   # Deliberately reads as unfinished: a root CA named this way on a real cluster
   # is a misconfiguration, not a working default to be quietly inherited.
-  commonName: local CA (unassigned tenant)
+  commonName: local CA (self-signed)

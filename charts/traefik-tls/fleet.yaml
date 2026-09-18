@@ -8,7 +8,7 @@ helm:
 dependsOn:
   - selector:
       matchLabels:
-        provides: cert-manager-issuer
+        provides: cert-manager-self-signed-issuer
 
 labels:
   provides: traefik-tls

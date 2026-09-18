@@ -43,4 +43,4 @@ targetCustomizations:
     clusterSelector: {}
 
 labels:
-  provides: cert-manager-issuer
+  provides: cert-manager-self-signed-issuer
