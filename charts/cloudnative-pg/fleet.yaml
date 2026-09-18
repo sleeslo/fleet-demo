@@ -1,0 +1,12 @@
+defaultNamespace: cnpg-system
+
+helm:
+  releaseName: cloudnative-pg
+  repo: https://cloudnative-pg.github.io/charts
+  chart: cloudnative-pg
+  version: 0.29.0
+  valuesFiles:
+    - values.yaml
+
+labels:
+  provides: cloudnative-pg

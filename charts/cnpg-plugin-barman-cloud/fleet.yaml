@@ -1,0 +1,12 @@
+defaultNamespace: cnpg-system
+
+helm:
+  releaseName: cnpg-plugin-barman-cloud 
+  repo: https://cloudnative-pg.github.io/charts
+  chart: cloudnative-pg/plugin-barman-cloud
+  version: 0.8.0
+  valuesFiles:
+    - values.yaml
+
+labels:
+  provides: cnpg-plugin-barman-cloud 

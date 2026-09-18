@@ -17,6 +17,8 @@ spec:
     - charts/traefik
     - charts/external-dns
     - charts/sealed-secrets
+    - charts/cloudnative-pg
+    - charts/cnpg-plugin-barman-cloud
 
   targets:
     - name: local
