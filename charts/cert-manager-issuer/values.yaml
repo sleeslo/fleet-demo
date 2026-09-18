@@ -1,10 +1,5 @@
-acme:
+ca:
   # Fallback for a cluster that matches no targetCustomization in fleet.yaml.
-  # Deliberately not a routable address: if this ever reaches a real cluster,
-  # ACME registration fails visibly rather than quietly registering every tenant
-  # under one shared contact.
-  email: placeholder@example.internal
-
-  # Staging endpoint. A tenant that is ready for real certificates overrides this
-  # the same way it overrides the email, no separate chart needed.
-  server: https://acme-staging-v02.api.letsencrypt.org/directory
+  # Deliberately reads as unfinished: a root CA named this way on a real cluster
+  # is a misconfiguration, not a working default to be quietly inherited.
+  commonName: local CA (unassigned tenant)

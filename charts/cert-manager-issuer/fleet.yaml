@@ -1,46 +1,33 @@
 defaultNamespace: cert-manager
 
 # A local chart rather than raw manifests, because targetCustomizations can only
-# override Helm values, and there has to be a template for the ACME contact to
-# be substituted into.
+# override Helm values, and there has to be a template for the CA name to be
+# substituted into.
 helm:
   chart: ./
   releaseName: cert-manager-issuer
-
-  # The ACME contact is a real person's address, so it never enters git. It is
-  # read at deploy time from a Secret on the downstream cluster, which the
-  # acme-contact bundle plants there from a SealedSecret. Merge order is
-  # values, then valuesFiles, then valuesFrom, so this wins over values.yaml.
-  valuesFrom:
-    - secretKeyRef:
-        name: acme-contact
-        namespace: cert-manager
-        key: values.yaml
 
 dependsOn:
   - selector:
       matchLabels:
         provides: cert-manager
-  - selector:
-      matchLabels:
-        provides: acme-contact
 
 # Keyed on the tenant label of the Cluster rather than its name, so onboarding a
 # tenant is one entry here plus one label on that tenant's Cluster, not a new
 # file. Values only: never a different chart, repo or version.
 #
-# Matching is FirstMatch by default, so order matters once entries overlap. A
-# cluster matching nothing falls back to values.yaml.
+# Matching is FirstMatch by default, so order matters once entries overlap.
 targetCustomizations:
-  # Non sensitive per tenant values belong here. The ACME contact deliberately
-  # does not: it comes from the cluster's own Secret via valuesFrom above, so a
-  # tenant's address is never committed and never visible to other tenants.
-  # A tenant graduating to production certificates is this kind of change.
+  # This value is deliberately the string already on the live certificate.
+  # commonName is part of the Certificate spec, so changing it makes cert-manager
+  # reissue the root: a new CA key, every leaf re-signed, and any trust imported
+  # into an OS or browser silently invalidated. A second tenant gets its own name
+  # and its own CA, which is the point, but this one stays put.
   - name: playground
     helm:
       values:
-        acme:
-          server: https://acme-staging-v02.api.letsencrypt.org/directory
+        ca:
+          commonName: fleet-playground local CA
     clusterSelector:
       matchLabels:
         tenant: playground

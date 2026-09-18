@@ -10,7 +10,9 @@ metadata:
   namespace: cert-manager
 spec:
   isCA: true
-  commonName: fleet-playground local CA
+  # Per tenant, so an operator looking at an issued certificate can tell whose
+  # CA signed it. Changing this reissues the root, see fleet.yaml.
+  commonName: {{ .Values.ca.commonName | quote }}
   secretName: local-ca-tls
   # Five years. This is the certificate a human has to trust in their OS or
   # browser, so the default 90 days would mean re-trusting it four times a year.

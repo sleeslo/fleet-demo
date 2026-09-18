@@ -14,7 +14,7 @@ that Traefik depends on.
 charts/                            tenant agnostic bundle definitions, no targets
   gateway-api-crds/                raw manifests, Gateway API v1.6.1 Standard channel
   cert-manager/                    external chart, CRDs and Gateway API enabled in values
-  cert-manager-issuer/             local chart, cluster wide issuers, per tenant ACME contact
+  cert-manager-issuer/             local chart, selfSigned bootstrap plus per tenant local CA
   traefik-tls/                     raw manifest, the Certificate for the Traefik listener
   traefik/                         external chart plus a values override file
   external-dns/                    external chart, in-memory provider for now
@@ -39,7 +39,7 @@ gateway-api-crds ──► cert-manager ──► cert-manager-issuer ──► 
                                                                             ▼
                                              external-dns  ◄──────────  traefik
 
-sealed-secrets     (independent, nothing waits on it yet)
+sealed-secrets     (independent, no consumer yet)
 ```
 
 Traefik waits on two things: the CRDs, because its Gateway provider needs them,
@@ -59,8 +59,8 @@ restarted the pod, with no error to explain why.
 
 `charts/cert-manager-issuer` is the one chart defined in this repository rather
 than pulled from upstream. It has to be a chart, not raw manifests, because the
-ACME contact address differs per tenant and `targetCustomizations` can only
-override Helm values, so there must be a template to substitute into.
+root CA is named per tenant and `targetCustomizations` can only override Helm
+values, so there must be a template to substitute into.
 
 The shape is one shared chart plus one entry per tenant in `fleet.yaml`:
 
@@ -69,12 +69,15 @@ targetCustomizations:
   - name: playground
     helm:
       values:
-        acme:
-          email: acme-playground@example.internal
+        ca:
+          commonName: fleet-playground local CA
     clusterSelector:
       matchLabels:
         tenant: playground
 ```
+
+Each tenant gets its own root CA with its own name, so an operator looking at an
+issued certificate can tell whose CA signed it.
 
 Onboarding a tenant is therefore one entry here plus one `tenant: <name>` label
 on that tenant's `Cluster`, not a new file and never a second copy of the chart.
@@ -99,13 +102,18 @@ Two traps worth knowing, both verified with `fleet target` rather than assumed:
   only. Two tenants needing genuinely different chart versions is a separate
   path under `charts/`, not a customization.
 
-## Secrets, and the ACME contact
+`commonName` is part of the Certificate spec, so changing an existing tenant's
+value makes cert-manager reissue the root: new CA key, every leaf re-signed, and
+any trust already imported into an OS or browser silently invalidated. Pick the
+name when a tenant is onboarded and leave it alone after that.
 
-The ACME contact is a real person's mailbox, so it is kept out of git the same
-way a credential would be, even though it is not secret in the cryptographic
-sense.
+## Secrets
 
-The path a value takes:
+Nothing here needs a secret yet. `charts/sealed-secrets` is deployed and idle,
+waiting for the first one, which will be the DNS provider credential for
+external-dns when it moves off the `inmemory` provider.
+
+The workflow, for when that happens. A value takes this path:
 
 ```
 SealedSecret in git  ──►  controller decrypts  ──►  Secret on the cluster
@@ -113,27 +121,26 @@ SealedSecret in git  ──►  controller decrypts  ──►  Secret on the cl
                           helm.valuesFrom reads it  ◄──────┘
                                     │
                                     ▼
-                    .Values.acme.email inside the chart template
+                         .Values.<key> inside a chart template
 ```
 
-`charts/acme-contact` holds only the SealedSecret. It is a separate bundle from
-`cert-manager-issuer` because `valuesFrom` is resolved before that chart
-renders, so the Secret must already exist, which a resource in the same bundle
-cannot promise.
+The SealedSecret belongs in its own bundle, separate from the chart that
+consumes it, because `valuesFrom` is resolved before that chart renders. The
+Secret has to exist already, which a resource in the same bundle cannot promise.
+That consuming chart then declares `dependsOn` on the SealedSecret's bundle.
 
-To set or rotate the address:
+To seal something:
 
 ```
 tmp=$(mktemp)
 cat > "$tmp" <<'EOF'
-acme:
-  email: someone@example.com
+someKey: the-value
 EOF
 
-kubectl -n cert-manager create secret generic acme-contact \
+kubectl -n <namespace> create secret generic <name> \
   --from-file=values.yaml="$tmp" \
   --dry-run=client -o yaml \
-  | kubeseal --format yaml > charts/acme-contact/sealedsecret.yaml
+  | kubeseal --format yaml > charts/<bundle>/sealedsecret.yaml
 
 rm "$tmp"
 ```
@@ -146,10 +153,10 @@ where it looks by default.
 Three things that catch people out:
 
 - **Sealing is bound to a namespace and a name.** The default scope encrypts
-  against `cert-manager/acme-contact` specifically. Rename the Secret or move it
-  to another namespace and the controller will refuse to decrypt it.
+  against that exact `namespace/name` pair. Rename the Secret or move it to
+  another namespace and the controller will refuse to decrypt it.
 - **Seal before committing.** A path with no resources in it fails the bundle,
-  so `charts/acme-contact` is broken until `sealedsecret.yaml` exists.
+  so a new SealedSecret directory is broken until `sealedsecret.yaml` exists.
 - **The sealing key is cluster state, not repo state.** Recreate the cluster and
   every committed SealedSecret becomes undecryptable, unless the key was saved
   first:
@@ -164,26 +171,24 @@ Three things that catch people out:
 
 ## Placeholders that need real values
 
-Both are marked TBD in the files:
-
-- `charts/cert-manager-issuer` carries a placeholder ACME contact address, in
-  `values.yaml` as the catch-all default and in `fleet.yaml` per tenant.
-  cert-manager registers an ACME account as soon as the
-  ClusterIssuer exists, not when the first Certificate is requested, and Let's
-  Encrypt rejects contact domains without a public suffix. So this issuer will
-  report NotReady until a real platform operated address is filled in. Nothing
-  depends on the bundle, so it blocks nothing else.
-
-  Note that a working email still would not let this issue a certificate for
-  `dashboard.docker.localhost`. Let's Encrypt only issues for names under a
-  valid public suffix, and `.localhost` is reserved by RFC 6761, so the order is
-  refused before validation is even attempted. The issuer is structural
-  boilerplate for a future real environment. For local TLS, a selfSigned or CA
-  ClusterIssuer is the option that actually works.
 - `charts/external-dns/values.yaml` runs the `inmemory` provider and filters on
   a placeholder zone. It reconciles normally but writes records nowhere, which
-  is deliberate: every real provider needs a credential, and that waits for
-  Sealed Secrets.
+  is deliberate: every real provider needs a credential, and that is the first
+  job for the sealed-secrets controller above.
+
+## No public certificates here
+
+There is no ACME issuer in this repository, by design. Let's Encrypt only issues
+for names under a valid public suffix, and `.localhost` is reserved by RFC 6761,
+so no amount of configuration would produce a certificate for
+`dashboard.docker.localhost`. An ACME issuer would also have been a liability:
+it lived in the same bundle as the local CA, and since Fleet readiness is per
+bundle, a failed ACME registration once took `traefik-tls` down with it and left
+the cluster without a certificate at all.
+
+Local TLS is served entirely by the `local-ca` ClusterIssuer, which needs no
+network. A real environment with a real domain adds a public issuer as its own
+bundle, so that nothing in the local path can ever depend on it.
 
 ## Prerequisites
 
