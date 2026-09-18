@@ -99,6 +99,69 @@ Two traps worth knowing, both verified with `fleet target` rather than assumed:
   only. Two tenants needing genuinely different chart versions is a separate
   path under `charts/`, not a customization.
 
+## Secrets, and the ACME contact
+
+The ACME contact is a real person's mailbox, so it is kept out of git the same
+way a credential would be, even though it is not secret in the cryptographic
+sense.
+
+The path a value takes:
+
+```
+SealedSecret in git  ──►  controller decrypts  ──►  Secret on the cluster
+                                                          │
+                          helm.valuesFrom reads it  ◄──────┘
+                                    │
+                                    ▼
+                    .Values.acme.email inside the chart template
+```
+
+`charts/acme-contact` holds only the SealedSecret. It is a separate bundle from
+`cert-manager-issuer` because `valuesFrom` is resolved before that chart
+renders, so the Secret must already exist, which a resource in the same bundle
+cannot promise.
+
+To set or rotate the address:
+
+```
+tmp=$(mktemp)
+cat > "$tmp" <<'EOF'
+acme:
+  email: someone@example.com
+EOF
+
+kubectl -n cert-manager create secret generic acme-contact \
+  --from-file=values.yaml="$tmp" \
+  --dry-run=client -o yaml \
+  | kubeseal --format yaml > charts/acme-contact/sealedsecret.yaml
+
+rm "$tmp"
+```
+
+`--dry-run=client` means the plaintext Secret is only ever a local manifest, it
+is never sent to the cluster. `kubeseal` needs no flags here because the
+controller is deployed as `sealed-secrets-controller` in `kube-system`, which is
+where it looks by default.
+
+Three things that catch people out:
+
+- **Sealing is bound to a namespace and a name.** The default scope encrypts
+  against `cert-manager/acme-contact` specifically. Rename the Secret or move it
+  to another namespace and the controller will refuse to decrypt it.
+- **Seal before committing.** A path with no resources in it fails the bundle,
+  so `charts/acme-contact` is broken until `sealedsecret.yaml` exists.
+- **The sealing key is cluster state, not repo state.** Recreate the cluster and
+  every committed SealedSecret becomes undecryptable, unless the key was saved
+  first:
+
+  ```
+  kubectl -n kube-system get secret \
+    -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml > sealing-key.yaml
+  ```
+
+  That file is the private key for everything ever sealed against this cluster.
+  It belongs in a password manager, never in this repository.
+
 ## Placeholders that need real values
 
 Both are marked TBD in the files:
@@ -191,6 +254,16 @@ prefix every path entry.
 ```
 kubectl apply -f tenants/local/gitrepos/landing-zone.yaml
 ```
+
+**Adding a chart is two changes, not one.** `spec.paths` lives in the GitRepo
+object on the cluster and is never read out of git, because a GitRepo that
+deployed other GitRepos would be a nested Fleet resource. So a new directory
+under `charts/` needs the commit *and* a re-apply of the manifest above.
+Without it Fleet picks up the commit, scans only the paths it already knows
+about, and correctly does nothing, which looks a lot like Fleet being broken.
+Editing an existing chart needs only the commit.
+
+See `TROUBLESHOOTING.md` when something does not appear or does not deploy.
 
 ## Validation
 

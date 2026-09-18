@@ -12,6 +12,7 @@ spec:
   paths:
     - charts/gateway-api-crds
     - charts/cert-manager
+    - charts/acme-contact
     - charts/cert-manager-issuer
     - charts/traefik-tls
     - charts/traefik

@@ -7,10 +7,23 @@ helm:
   chart: ./
   releaseName: cert-manager-issuer
 
+  # The ACME contact is a real person's address, so it never enters git. It is
+  # read at deploy time from a Secret on the downstream cluster, which the
+  # acme-contact bundle plants there from a SealedSecret. Merge order is
+  # values, then valuesFiles, then valuesFrom, so this wins over values.yaml.
+  valuesFrom:
+    - secretKeyRef:
+        name: acme-contact
+        namespace: cert-manager
+        key: values.yaml
+
 dependsOn:
   - selector:
       matchLabels:
         provides: cert-manager
+  - selector:
+      matchLabels:
+        provides: acme-contact
 
 # Keyed on the tenant label of the Cluster rather than its name, so onboarding a
 # tenant is one entry here plus one label on that tenant's Cluster, not a new
@@ -19,13 +32,15 @@ dependsOn:
 # Matching is FirstMatch by default, so order matters once entries overlap. A
 # cluster matching nothing falls back to values.yaml.
 targetCustomizations:
+  # Non sensitive per tenant values belong here. The ACME contact deliberately
+  # does not: it comes from the cluster's own Secret via valuesFrom above, so a
+  # tenant's address is never committed and never visible to other tenants.
+  # A tenant graduating to production certificates is this kind of change.
   - name: playground
     helm:
       values:
         acme:
-          # TBD, same placeholder domain as before. This is the one line a
-          # tenant actually owns.
-          email: acme-playground@example.internal
+          server: https://acme-staging-v02.api.letsencrypt.org/directory
     clusterSelector:
       matchLabels:
         tenant: playground
