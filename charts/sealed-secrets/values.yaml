@@ -1,0 +1,5 @@
+# kubeseal looks for a controller named sealed-secrets-controller in kube-system
+# unless told otherwise. Matching that default here is the difference between
+# `kubeseal -f secret.yaml -w sealed.yaml` and having to remember two extra
+# flags on every invocation.
+fullnameOverride: sealed-secrets-controller

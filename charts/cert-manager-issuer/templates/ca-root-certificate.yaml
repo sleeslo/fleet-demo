@@ -1,0 +1,24 @@
+# The local root CA, signed by the selfsigned bootstrap issuer.
+#
+# It has to live in the cert-manager namespace: a ClusterIssuer of type ca reads
+# its key from --cluster-resource-namespace, which defaults to the namespace the
+# controller runs in. A CA secret anywhere else is simply not found.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: local-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: fleet-playground local CA
+  secretName: local-ca-tls
+  # Five years. This is the certificate a human has to trust in their OS or
+  # browser, so the default 90 days would mean re-trusting it four times a year.
+  duration: 43800h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer

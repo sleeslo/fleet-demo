@@ -1,0 +1,19 @@
+# Replaces the manual `openssl req -x509` plus `kubectl create secret tls` step.
+#
+# The Secret name is kept as local-selfsigned-tls so the Traefik values do not
+# have to change, even though this certificate is now CA signed rather than self
+# signed. Unlike the openssl version it carries proper subjectAltNames and
+# cert-manager renews it on its own.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: local-selfsigned-tls
+spec:
+  secretName: local-selfsigned-tls
+  commonName: "*.docker.localhost"
+  dnsNames:
+    - "*.docker.localhost"
+    - docker.localhost
+  issuerRef:
+    name: local-ca
+    kind: ClusterIssuer

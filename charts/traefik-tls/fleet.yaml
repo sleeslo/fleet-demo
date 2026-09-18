@@ -1,0 +1,14 @@
+defaultNamespace: traefik
+
+helm:
+  releaseName: traefik-tls
+
+# Needs the local-ca ClusterIssuer to exist before the Certificate can be
+# issued.
+dependsOn:
+  - selector:
+      matchLabels:
+        provides: cert-manager-issuer
+
+labels:
+  provides: traefik-tls

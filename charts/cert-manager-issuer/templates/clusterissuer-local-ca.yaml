@@ -1,0 +1,10 @@
+# Issues every local workload certificate. Trust local-ca-tls once and every
+# certificate this signs is trusted, which is the whole point of bootstrapping a
+# CA rather than issuing self signed leaves one at a time.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: local-ca
+spec:
+  ca:
+    secretName: local-ca-tls

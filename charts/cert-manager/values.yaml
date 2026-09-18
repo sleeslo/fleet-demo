@@ -1,0 +1,17 @@
+# The chart ships its CRDs but does not install them by default. Enabling them
+# here keeps them as ordinary templates, so Fleet upgrades them with the chart
+# rather than leaving them frozen at their install time version.
+crds:
+  enabled: true
+  # Default, repeated because it matters: removing the CRDs garbage collects
+  # every Certificate and Issuer on the cluster.
+  keep: true
+
+# Required for the ClusterIssuer's http01.gatewayHTTPRoute solver. The
+# ExperimentalGatewayAPISupport feature gate is already on by default, but the
+# --enable-gateway-api flag behind this option is not, and both are needed.
+# cert-manager only checks for the Gateway API CRDs at startup, which is why
+# this bundle declares a dependsOn for them.
+config:
+  gatewayAPI:
+    enabled: true

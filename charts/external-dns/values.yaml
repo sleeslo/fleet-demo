@@ -1,0 +1,25 @@
+# No DNS provider credentials exist in this playground, and adding one means
+# adding a Secret. The in-memory provider keeps external-dns fully functional
+# against a throwaway in-process zone, so the wiring can be verified without
+# any credential. Swap this for a real provider once Sealed Secrets lands.
+provider:
+  name: inmemory
+
+# Required by the chart, it has no default. upsert-only never deletes a record,
+# which is the conservative choice until a real zone is attached.
+policy: upsert-only
+
+# The Traefik chart runs with the Ingress provider disabled, so the default
+# ingress source would never match anything. Watch Gateway API routes instead.
+sources:
+  - service
+  - gateway-httproute
+
+# Identifies which external-dns instance owns a TXT record. Needs to be unique
+# per cluster once more than one instance writes to the same zone.
+txtOwnerId: fleet-playground
+
+# TBD: replace with the real zone. Without a filter external-dns would consider
+# every hostname it finds in scope.
+domainFilters:
+  - example.internal

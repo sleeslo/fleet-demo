@@ -1,0 +1,44 @@
+defaultNamespace: cert-manager
+
+# A local chart rather than raw manifests, because targetCustomizations can only
+# override Helm values, and there has to be a template for the ACME contact to
+# be substituted into.
+helm:
+  chart: ./
+  releaseName: cert-manager-issuer
+
+dependsOn:
+  - selector:
+      matchLabels:
+        provides: cert-manager
+
+# Keyed on the tenant label of the Cluster rather than its name, so onboarding a
+# tenant is one entry here plus one label on that tenant's Cluster, not a new
+# file. Values only: never a different chart, repo or version.
+#
+# Matching is FirstMatch by default, so order matters once entries overlap. A
+# cluster matching nothing falls back to values.yaml.
+targetCustomizations:
+  - name: playground
+    helm:
+      values:
+        acme:
+          # TBD, same placeholder domain as before. This is the one line a
+          # tenant actually owns.
+          email: acme-playground@example.internal
+    clusterSelector:
+      matchLabels:
+        tenant: playground
+
+  # Catch-all, and it has to stay last because FirstMatch takes the first entry
+  # that matches. This is not cosmetic: Bundle targets are an exclusive list, so
+  # a cluster carrying no tenant label matches nothing and Fleet creates no
+  # BundleDeployment for it at all. Without this entry the bundle silently does
+  # not deploy there, rather than falling back to the values.yaml defaults.
+  # Verified with `fleet target`, which returns no bundledeployment when every
+  # entry fails to match.
+  - name: default
+    clusterSelector: {}
+
+labels:
+  provides: cert-manager-issuer

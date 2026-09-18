@@ -1,0 +1,20 @@
+defaultNamespace: cert-manager
+
+helm:
+  releaseName: cert-manager
+  repo: https://charts.jetstack.io
+  chart: cert-manager
+  version: v1.21.2
+  valuesFiles:
+    - values.yaml
+
+# Gateway API support is only probed when the controller starts, so the CRDs
+# have to exist first or the gatewayHTTPRoute solver stays inactive until
+# something restarts the pod.
+dependsOn:
+  - selector:
+      matchLabels:
+        provides: gateway-api-crds
+
+labels:
+  provides: cert-manager

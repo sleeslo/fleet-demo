@@ -11,10 +11,16 @@ helm:
 # values.yaml sets providers.kubernetesGateway.enabled, so the Gateway API CRDs
 # must be Ready first. Selector form, because bundle names are derived from the
 # GitRepo name plus path and get truncated.
+#
+# traefik-tls supplies the Secret the websecure listener references. Without it
+# the listener never becomes Programmed.
 dependsOn:
   - selector:
       matchLabels:
         provides: gateway-api-crds
+  - selector:
+      matchLabels:
+        provides: traefik-tls
 
 labels:
   provides: traefik

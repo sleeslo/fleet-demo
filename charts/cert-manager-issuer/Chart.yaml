@@ -1,0 +1,7 @@
+apiVersion: v2
+name: cert-manager-issuer
+description: Cluster wide cert-manager issuers for this landing zone
+type: application
+# This chart is defined in this repository rather than pulled from an upstream
+# repo, so the version is its own and unrelated to any cert-manager release.
+version: 0.1.0

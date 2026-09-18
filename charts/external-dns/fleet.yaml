@@ -1,0 +1,20 @@
+defaultNamespace: external-dns
+
+helm:
+  releaseName: external-dns
+  repo: https://kubernetes-sigs.github.io/external-dns
+  chart: external-dns
+  version: 1.22.0
+  valuesFiles:
+    - values.yaml
+
+# Follows the gateway in the landing zone order: it watches the Gateway and
+# HTTPRoutes that Traefik programs. Traefik gates on the Gateway API CRDs, so
+# those are guaranteed present by the time this deploys.
+dependsOn:
+  - selector:
+      matchLabels:
+        provides: traefik
+
+labels:
+  provides: external-dns

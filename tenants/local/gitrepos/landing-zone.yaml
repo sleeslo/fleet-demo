@@ -11,7 +11,12 @@ spec:
   #  provides.
   paths:
     - charts/gateway-api-crds
+    - charts/cert-manager
+    - charts/cert-manager-issuer
+    - charts/traefik-tls
     - charts/traefik
+    - charts/external-dns
+    - charts/sealed-secrets
 
   targets:
     - name: local

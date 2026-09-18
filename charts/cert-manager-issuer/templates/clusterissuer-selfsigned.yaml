@@ -1,0 +1,9 @@
+# Bootstrap issuer. It signs exactly one thing, the local root CA, which is then
+# what actually issues workload certificates. Identical on every cluster, so it
+# carries no values.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}

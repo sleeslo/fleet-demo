@@ -1,0 +1,14 @@
+defaultNamespace: kube-system
+
+helm:
+  releaseName: sealed-secrets
+  repo: https://bitnami.github.io/sealed-secrets
+  chart: sealed-secrets
+  version: 2.20.0
+  valuesFiles:
+    - values.yaml
+
+# Foundation layer, depends on nothing. Anything holding a SealedSecret should
+# depend on this label.
+labels:
+  provides: sealed-secrets
